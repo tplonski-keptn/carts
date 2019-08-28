@@ -51,10 +51,12 @@ public class ItemsController {
     @Value("${endpoints.prometheus.enabled}")
     private String prometheusEnabled;
 
-    static final Counter requests = Counter.build()
-    	.name("requests_total").help("Total number of requests.").register();
-    static final Histogram requestLatency = Histogram.build()
-		.name("requests_latency_seconds").help("Request latency in seconds.").register();
+    public static final String FAULTY_ITEM_ID = "03fef6ac-1896-4ce8-bd69-b798f85c6e0f";
+    public static final Integer MAX_JOBCOUNT = 2;
+
+    static final Counter requests = Counter.build().name("requests_total").help("Total number of requests.").register();
+    static final Histogram requestLatency = Histogram.build().name("requests_latency_seconds")
+            .help("Request latency in seconds.").register();
 
     @ResponseStatus(HttpStatus.OK)
     @RequestMapping(value = "/{itemId:.*}", produces = MediaType.APPLICATION_JSON_VALUE, method = RequestMethod.GET)
@@ -125,12 +127,33 @@ public class ItemsController {
                 return item;
             } else {
                 Item newItem = new Item(foundItem.get(), foundItem.get().quantity() + 1);
+                System.out.println("found item id: " + newItem.getItemId());
+                if (newItem.getItemId().equals(FAULTY_ITEM_ID)) {
+                    System.out.println("special item found - do some calculation to increase CPU load");
+                    int jobCount = 0;
+                    while (jobCount < MAX_JOBCOUNT) {
+                        long count = 0;
+                        long max = 0;
+                        for (long i = 3; i <= 10000; i++) {
+                            boolean isPrime = true;
+                            for (long j = 2; j <= i / 2 && isPrime; j++) {
+                                isPrime = i % j > 0;
+                            }
+                            if (isPrime) {
+                                count++;
+                                max = i;
+                                System.out.println("prime: " + i);
+                            }
+                        }
+                        jobCount++;
+                    }
+
+                }
                 LOG.debug("Found item in cart. Incrementing for user: " + customerId + ", " + newItem);
                 updateItem(customerId, newItem);
                 return newItem;
             }
-        }
-        finally {
+        } finally {
             if (prometheusEnabled.equals("true") && requestTimer != null) {
                 requestTimer.observeDuration();
             }
@@ -167,26 +190,27 @@ public class ItemsController {
 
     // @ResponseStatus(HttpStatus.OK)
     // @RequestMapping(method = RequestMethod.GET, path = "/memoryLeak/{loops}")
-    // public void createMemoryLeak(@PathVariable("loops") Optional<String> loopNumber) {
-    //     class BadKey {
-    //         // no hashCode or equals();
-    //         public final String key;
+    // public void createMemoryLeak(@PathVariable("loops") Optional<String>
+    // loopNumber) {
+    // class BadKey {
+    // // no hashCode or equals();
+    // public final String key;
 
-    //         public BadKey(String key) {
-    //             this.key = key;
-    //         }
-    //     }
-    //     Map map = System.getProperties();
+    // public BadKey(String key) {
+    // this.key = key;
+    // }
+    // }
+    // Map map = System.getProperties();
 
-    //     int counter = 0;
-    //     if (loopNumber.isPresent()) {
-    //         int loops = Integer.parseInt(loopNumber.get());
-    //         while (counter < loops) {
-    //             map.put(new BadKey("key"), new String("value"));
-    //             counter++;
-    //         }
-    //         return;
-    //     }
+    // int counter = 0;
+    // if (loopNumber.isPresent()) {
+    // int loops = Integer.parseInt(loopNumber.get());
+    // while (counter < loops) {
+    // map.put(new BadKey("key"), new String("value"));
+    // counter++;
+    // }
+    // return;
+    // }
     // }
 
 }
