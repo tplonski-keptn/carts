@@ -98,13 +98,14 @@ public class ItemsController {
     @RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, method = RequestMethod.POST)
     public Item addToCart(@PathVariable String customerId, @RequestBody Item item) throws Exception {
         Histogram.Timer requestTimer = null;
-        LOG.info("Add item request");
+        LOG.error("Add item request");
         if (prometheusEnabled.equals("true")) {
             requests.inc();
             requestTimer = requestLatency.startTimer();
         }
+        System.out.println("Requested Item ID: " + item.getId());
         if (item.getItemId().equals(FAULTY_ITEM_ID)) {
-          LOG.info("special item found - do some calculation to increase CPU load");
+          LOG.error("special item found - do some calculation to increase CPU load");
           double load = 0.8;
           final long duration = 100000;
           for (int thread = 0; thread < MAX_JOBCOUNT; thread++) {
