@@ -53,7 +53,7 @@ public class ItemsController {
 
     public static final String FAULTY_ITEM_ID = "03fef6ac-1896-4ce8-bd69-b798f85c6e0f";
     public static final Integer MAX_JOBCOUNT = 2;
-    public static final double CPU_LOAD = 0.4;
+    public static final double CPU_LOAD = 0.6;
 
     static final Counter requests = Counter.build().name("requests_total").help("Total number of requests.").register();
     static final Histogram requestLatency = Histogram.build().name("requests_latency_seconds")
