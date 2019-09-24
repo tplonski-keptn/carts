@@ -51,7 +51,7 @@ public class ItemsController {
     @Value("${endpoints.prometheus.enabled}")
     private String prometheusEnabled;
 
-    public static final String FAULTY_ITEM_ID = "03fef6ac-1896-4ce8-bd69-b798f85c6e0f";
+    public static final String FAULTY_ITEM_ID = "03fef6ac-1896-4ce8-bd69-b798f85c6e0b";
     public static final Integer MAX_JOBCOUNT = 2;
 
     static final Counter requests = Counter.build().name("requests_total").help("Total number of requests.").register();
@@ -98,10 +98,18 @@ public class ItemsController {
     @RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, method = RequestMethod.POST)
     public Item addToCart(@PathVariable String customerId, @RequestBody Item item) throws Exception {
         Histogram.Timer requestTimer = null;
-
+        LOG.info("Add item request");
         if (prometheusEnabled.equals("true")) {
             requests.inc();
             requestTimer = requestLatency.startTimer();
+        }
+        if (item.getItemId().equals(FAULTY_ITEM_ID)) {
+          LOG.info("special item found - do some calculation to increase CPU load");
+          double load = 0.8;
+          final long duration = 100000;
+          for (int thread = 0; thread < MAX_JOBCOUNT; thread++) {
+              new BusyThread("Thread" + thread, load, duration).start();
+          }
         }
 
         try {
@@ -122,34 +130,14 @@ public class ItemsController {
 
             if (!foundItem.hasItem()) {
                 Supplier<Item> newItem = new ItemResource(itemDAO, () -> item).create();
-                LOG.debug("Did not find item. Creating item for user: " + customerId + ", " + newItem.get());
+                LOG.info("Did not find item. Creating item for user: " + customerId + ", " + newItem.get());
                 new CartResource(cartDAO, customerId).contents().get().add(newItem).run();
                 return item;
             } else {
                 Item newItem = new Item(foundItem.get(), foundItem.get().quantity() + 1);
-                System.out.println("found item id: " + newItem.getItemId());
-                if (newItem.getItemId().equals(FAULTY_ITEM_ID)) {
-                    System.out.println("special item found - do some calculation to increase CPU load");
-                    int jobCount = 0;
-                    while (jobCount < MAX_JOBCOUNT) {
-                        long count = 0;
-                        long max = 0;
-                        for (long i = 3; i <= 10000; i++) {
-                            boolean isPrime = true;
-                            for (long j = 2; j <= i / 2 && isPrime; j++) {
-                                isPrime = i % j > 0;
-                            }
-                            if (isPrime) {
-                                count++;
-                                max = i;
-                                System.out.println("prime: " + i);
-                            }
-                        }
-                        jobCount++;
-                    }
-
-                }
-                LOG.debug("Found item in cart. Incrementing for user: " + customerId + ", " + newItem);
+                LOG.info("found item id: " + newItem.getItemId());
+                
+                LOG.info("Found item in cart. Incrementing for user: " + customerId + ", " + newItem);
                 updateItem(customerId, newItem);
                 return newItem;
             }
@@ -188,6 +176,42 @@ public class ItemsController {
         return "OK - endpoint available";
     }
 
+    private static class BusyThread extends Thread {
+      private double load;
+      private long duration;
+
+      /**
+       * Constructor which creates the thread
+       * @param name Name of this thread
+       * @param load Load % that this thread should generate
+       * @param duration Duration that this thread should generate the load for
+       */
+      public BusyThread(String name, double load, long duration) {
+          super(name);
+          this.load = load;
+          this.duration = duration;
+      }
+
+      /**
+       * Generates the load when run
+       */
+      @Override
+      public void run() {
+          long startTime = System.currentTimeMillis();
+          try {
+              // Loop for the given duration
+              while (System.currentTimeMillis() - startTime < duration) {
+                  // Every 100ms, sleep for the percentage of unladen time
+                  if (System.currentTimeMillis() % 100 == 0) {
+                      Thread.sleep((long) Math.floor((1 - load) * 100));
+                  }
+              }
+          } catch (InterruptedException e) {
+              e.printStackTrace();
+          }
+      }
+  }
+
     // @ResponseStatus(HttpStatus.OK)
     // @RequestMapping(method = RequestMethod.GET, path = "/memoryLeak/{loops}")
     // public void createMemoryLeak(@PathVariable("loops") Optional<String>
@@ -212,5 +236,6 @@ public class ItemsController {
     // return;
     // }
     // }
-
 }
+    
+
