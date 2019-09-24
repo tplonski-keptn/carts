@@ -107,11 +107,30 @@ public class ItemsController {
 
         if (item.getItemId().equals(FAULTY_ITEM_ID)) {
           LOG.info("special item found - do some calculation to increase CPU load");
+          int jobCount = 0;
+          while (jobCount < MAX_JOBCOUNT) {
+              long count = 0;
+              long max = 0;
+              for (long i = 3; i <= 10000; i++) {
+                  boolean isPrime = true;
+                  for (long j = 2; j <= i / 2 && isPrime; j++) {
+                      isPrime = i % j > 0;
+                  }
+                  if (isPrime) {
+                      count++;
+                      max = i;
+                      System.out.println("prime: " + i);
+                  }
+              }
+              jobCount++;
+          }
+          /*
           double load = CPU_LOAD;
           final long duration = 100000;
           for (int thread = 0; thread < MAX_JOBCOUNT; thread++) {
               new BusyThread("Thread" + thread, load, duration).start();
           }
+          */
         }
 
         try {
