@@ -51,8 +51,9 @@ public class ItemsController {
     @Value("${endpoints.prometheus.enabled}")
     private String prometheusEnabled;
 
-    public static final String FAULTY_ITEM_ID = "03fef6ac-1896-4ce8-bd69-b798f85c6e0b";
+    public static final String FAULTY_ITEM_ID = "03fef6ac-1896-4ce8-bd69-b798f85c6e0f";
     public static final Integer MAX_JOBCOUNT = 2;
+    public static final double CPU_LOAD = 0.4;
 
     static final Counter requests = Counter.build().name("requests_total").help("Total number of requests.").register();
     static final Histogram requestLatency = Histogram.build().name("requests_latency_seconds")
@@ -98,15 +99,15 @@ public class ItemsController {
     @RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, method = RequestMethod.POST)
     public Item addToCart(@PathVariable String customerId, @RequestBody Item item) throws Exception {
         Histogram.Timer requestTimer = null;
-        LOG.error("Add item request");
+        LOG.info("Add item request");
         if (prometheusEnabled.equals("true")) {
             requests.inc();
             requestTimer = requestLatency.startTimer();
         }
-        System.out.println("Requested Item ID: " + item.getId());
+
         if (item.getItemId().equals(FAULTY_ITEM_ID)) {
-          LOG.error("special item found - do some calculation to increase CPU load");
-          double load = 0.8;
+          LOG.info("special item found - do some calculation to increase CPU load");
+          double load = CPU_LOAD;
           final long duration = 100000;
           for (int thread = 0; thread < MAX_JOBCOUNT; thread++) {
               new BusyThread("Thread" + thread, load, duration).start();
